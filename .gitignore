@@ -1,0 +1,20 @@
+# Compiled files
+deadlockdoctor
+*.o
+
+# Debug files
+*.gdb
+core
+core.*
+
+# Temporary files
+*.tmp
+*.swp
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+
