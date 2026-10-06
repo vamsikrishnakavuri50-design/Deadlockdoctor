@@ -20,13 +20,48 @@ typedef struct {
 
 } BankerState;
 
-/* Calculate Need matrix */
+
+/*
+ * Calculate Need matrix.
+ *
+ * Need = Maximum - Allocation
+ */
 void calculate_need(BankerState *state);
 
-/* Check whether the current state is safe */
+
+/*
+ * Check whether the current system state is safe.
+ *
+ * Returns:
+ * 1 -> Safe
+ * 0 -> Unsafe
+ */
 int check_safety(BankerState *state);
 
-/* Display the current Banker state */
+
+/*
+ * Process a resource request.
+ *
+ * Returns:
+ * 1 -> Request can be granted
+ * 0 -> Request must be denied
+ */
+int request_resources(
+    BankerState *state,
+    int process,
+    int request[]
+);
+
+
+/*
+ * Display the complete Banker state.
+ */
 void display_state(BankerState *state);
+
+
+/*
+ * Display the safe sequence.
+ */
+void display_safe_sequence(BankerState *state);
 
 #endif
