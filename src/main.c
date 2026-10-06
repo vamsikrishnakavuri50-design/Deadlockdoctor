@@ -1,311 +1,278 @@
 #include <stdio.h>
+
 #include "banker.h"
+#include "manager.h"
+#include "display.h"
 
 int main(void)
 {
-    BankerState state = {0};
+    BankerState state;
 
-    /*
-     * Project Header
-     */
-    printf("\n=========================================\n");
-    printf("           DEADLOCKDOCTOR\n");
-    printf("       BANKER'S ALGORITHM\n");
-    printf("=========================================\n");
-
-
-    /*
-     * -------------------------------------------------
-     * STEP 1: Get number of processes and resources
-     * -------------------------------------------------
-     */
-
-    printf("\nEnter number of processes (1-%d): ",
-           MAX_PROCESSES);
-
-    scanf("%d", &state.processes);
-
-    if (state.processes < 1 ||
-        state.processes > MAX_PROCESSES) {
-
-        printf("\nInvalid number of processes.\n");
-        return 1;
-    }
-
-
-    printf("Enter number of resources (1-%d): ",
-           MAX_RESOURCES);
-
-    scanf("%d", &state.resources);
-
-    if (state.resources < 1 ||
-        state.resources > MAX_RESOURCES) {
-
-        printf("\nInvalid number of resources.\n");
-        return 1;
-    }
-
-
-    /*
-     * -------------------------------------------------
-     * STEP 2: Enter Available resources
-     * -------------------------------------------------
-     */
-
-    printf("\n=========================================\n");
-    printf("          AVAILABLE RESOURCES\n");
-    printf("=========================================\n");
-
-    for (int j = 0; j < state.resources; j++) {
-
-        printf("Available Resource %d: ", j);
-
-        scanf("%d", &state.available[j]);
-
-        if (state.available[j] < 0) {
-
-            printf("\nInvalid resource value.\n");
-            return 1;
-        }
-    }
-
-
-    /*
-     * -------------------------------------------------
-     * STEP 3: Enter Maximum Matrix
-     * -------------------------------------------------
-     */
-
-    printf("\n=========================================\n");
-    printf("           MAXIMUM MATRIX\n");
-    printf("=========================================\n");
-
-    for (int i = 0; i < state.processes; i++) {
-
-        printf("\nMaximum resources for P%d:\n", i);
-
-        for (int j = 0; j < state.resources; j++) {
-
-            printf("Resource %d: ", j);
-
-            scanf("%d", &state.maximum[i][j]);
-
-            if (state.maximum[i][j] < 0) {
-
-                printf("\nInvalid maximum value.\n");
-                return 1;
-            }
-        }
-    }
-
-
-    /*
-     * -------------------------------------------------
-     * STEP 4: Enter Allocation Matrix
-     * -------------------------------------------------
-     */
-
-    printf("\n=========================================\n");
-    printf("          ALLOCATION MATRIX\n");
-    printf("=========================================\n");
-
-    for (int i = 0; i < state.processes; i++) {
-
-        printf("\nAllocated resources for P%d:\n", i);
-
-        for (int j = 0; j < state.resources; j++) {
-
-            printf("Resource %d: ", j);
-
-            scanf("%d", &state.allocation[i][j]);
-
-            if (state.allocation[i][j] < 0) {
-
-                printf("\nInvalid allocation value.\n");
-                return 1;
-            }
-
-
-            /*
-             * Allocation cannot exceed Maximum.
-             */
-            if (state.allocation[i][j] >
-                state.maximum[i][j]) {
-
-                printf("\nInvalid state.\n");
-
-                printf("Allocation of P%d for Resource %d "
-                       "cannot exceed Maximum.\n",
-                       i, j);
-
-                return 1;
-            }
-        }
-    }
-
-
-    /*
-     * -------------------------------------------------
-     * STEP 5: Calculate Need
-     * -------------------------------------------------
-     */
-
-    calculate_need(&state);
-
-
-    /*
-     * -------------------------------------------------
-     * STEP 6: Display complete Banker state
-     * -------------------------------------------------
-     */
-
-    printf("\n\n=========================================\n");
-    printf("          INITIAL BANKER STATE\n");
-    printf("=========================================\n");
-
-    display_state(&state);
-
-
-    /*
-     * -------------------------------------------------
-     * STEP 7: Check system safety
-     * -------------------------------------------------
-     */
-
-    printf("\nSYSTEM SAFETY CHECK\n");
-    printf("-----------------------------------------\n");
-
-    if (check_safety(&state)) {
-
-        printf("SYSTEM STATUS: SAFE\n");
-
-        display_safe_sequence(&state);
-
-    } else {
-
-        printf("SYSTEM STATUS: UNSAFE\n");
-        printf("No safe sequence exists.\n");
-
-        /*
-         * We can still display the state,
-         * but resource requests should not
-         * be processed from an initially
-         * unsafe state.
-         */
-        return 0;
-    }
-
-
-    /*
-     * -------------------------------------------------
-     * STEP 8: Resource Request
-     * -------------------------------------------------
-     */
-
+    int i, j;
     int process;
     int request[MAX_RESOURCES];
 
+    int safety_result;
+    int request_result;
 
-    printf("\n=========================================\n");
-    printf("          RESOURCE REQUEST\n");
+    /*
+     * Initialize the Banker state.
+     */
+    initialize_state(&state);
+
+    printf("=========================================\n");
+    printf("              DeadlockDoctor\n");
+    printf("       Banker's Algorithm Simulator\n");
     printf("=========================================\n");
 
+    /*
+     * Get number of processes.
+     */
+    printf("\nEnter number of processes (1-%d): ",
+           MAX_PROCESSES);
 
-    printf("\nEnter process number (0-%d): ",
-           state.processes - 1);
-
-    scanf("%d", &process);
-
-
-    if (process < 0 ||
-        process >= state.processes) {
-
-        printf("\nInvalid process number.\n");
+    if (scanf("%d", &state.processes) != 1)
+    {
+        printf("Invalid input.\n");
         return 1;
     }
 
+    /*
+     * Get number of resources.
+     */
+    printf("Enter number of resources (1-%d): ",
+           MAX_RESOURCES);
 
-    printf("\nEnter resource request for P%d:\n",
-           process);
+    if (scanf("%d", &state.resources) != 1)
+    {
+        printf("Invalid input.\n");
+        return 1;
+    }
 
+    /*
+     * Validate dimensions.
+     */
+    if (!validate_dimensions(state.processes,
+                             state.resources))
+    {
+        printf("\nERROR: Invalid number of processes or resources.\n");
+        return 1;
+    }
 
-    for (int j = 0; j < state.resources; j++) {
+    /*
+     * Input Available resources.
+     */
+    printf("\nEnter Available resources:\n");
 
-        printf("Resource %d: ", j);
+    for (j = 0; j < state.resources; j++)
+    {
+        printf("Available R%d: ", j);
 
-        scanf("%d", &request[j]);
-
-
-        if (request[j] < 0) {
-
-            printf("\nInvalid request.\n");
-            printf("Resource request cannot be negative.\n");
-
+        if (scanf("%d", &state.available[j]) != 1)
+        {
+            printf("Invalid input.\n");
             return 1;
         }
     }
 
-
     /*
-     * Display request.
+     * Validate Available resources.
      */
-
-    printf("\nRequest from P%d: ", process);
-
-    for (int j = 0; j < state.resources; j++) {
-
-        printf("%d ", request[j]);
+    if (!validate_available(&state))
+    {
+        printf("\nERROR: Available resources cannot be negative.\n");
+        return 1;
     }
 
-    printf("\n");
+    /*
+     * Input Maximum matrix.
+     */
+    printf("\nEnter Maximum Resource Matrix:\n");
 
+    for (i = 0; i < state.processes; i++)
+    {
+        printf("\nMaximum resources for P%d:\n", i);
+
+        for (j = 0; j < state.resources; j++)
+        {
+            printf("P%d R%d: ", i, j);
+
+            if (scanf("%d", &state.maximum[i][j]) != 1)
+            {
+                printf("Invalid input.\n");
+                return 1;
+            }
+        }
+    }
 
     /*
-     * -------------------------------------------------
-     * STEP 9: Process the request
-     * -------------------------------------------------
+     * Input Allocation matrix.
      */
+    printf("\nEnter Allocation Matrix:\n");
 
-    request_resources(
-        &state,
-        process,
-        request
-    );
+    for (i = 0; i < state.processes; i++)
+    {
+        printf("\nAllocated resources for P%d:\n", i);
 
+        for (j = 0; j < state.resources; j++)
+        {
+            printf("P%d R%d: ", i, j);
+
+            if (scanf("%d", &state.allocation[i][j]) != 1)
+            {
+                printf("Invalid input.\n");
+                return 1;
+            }
+        }
+    }
 
     /*
-     * -------------------------------------------------
-     * STEP 10: Display state after request
-     * -------------------------------------------------
+     * Validate Maximum and Allocation matrices.
      */
-
-    printf("\n========== STATE AFTER REQUEST ==========\n");
-
-    display_state(&state);
-
+    if (!validate_matrices(&state))
+    {
+        printf("\nERROR: Invalid Maximum or Allocation matrix.\n");
+        printf("Allocation cannot exceed Maximum.\n");
+        return 1;
+    }
 
     /*
-     * -------------------------------------------------
-     * STEP 11: Final safety check
-     * -------------------------------------------------
+     * Calculate Need matrix.
      */
+    calculate_need(&state);
 
-    if (check_safety(&state)) {
+    /*
+     * Display complete initial state.
+     */
+    display_system_state(&state);
 
+    /*
+     * Perform initial safety check.
+     */
+    printf("\nChecking initial system safety...\n");
+
+    safety_result = check_safety(&state);
+
+    if (safety_result)
+    {
+        printf("\nSYSTEM STATUS: SAFE\n");
+
+        display_safe_sequence_result(&state);
+    }
+    else
+    {
+        printf("\nSYSTEM STATUS: UNSAFE\n");
+        printf("No safe sequence exists.\n");
+
+        return 0;
+    }
+
+    /*
+     * Input process for resource request.
+     */
+    printf("\n=========================================\n");
+    printf("       RESOURCE REQUEST SECTION\n");
+    printf("=========================================\n");
+
+    printf("\nEnter process number making the request (0-%d): ",
+           state.processes - 1);
+
+    if (scanf("%d", &process) != 1)
+    {
+        printf("Invalid input.\n");
+        return 1;
+    }
+
+    /*
+     * Validate process number.
+     */
+    if (process < 0 || process >= state.processes)
+    {
+        printf("\nERROR: Invalid process number.\n");
+        return 1;
+    }
+
+    /*
+     * Input resource request.
+     */
+    printf("\nEnter resource request for P%d:\n", process);
+
+    for (j = 0; j < state.resources; j++)
+    {
+        printf("Request R%d: ", j);
+
+        if (scanf("%d", &request[j]) != 1)
+        {
+            printf("Invalid input.\n");
+            return 1;
+        }
+
+        /*
+         * Negative requests are invalid.
+         */
+        if (request[j] < 0)
+        {
+            printf("\nERROR: Resource request cannot be negative.\n");
+            return 1;
+        }
+    }
+
+    /*
+     * Display requested resources.
+     */
+    display_request(request,
+                    process,
+                    state.resources);
+
+    /*
+     * Process the resource request.
+     */
+    request_result = request_resources(&state,
+                                       process,
+                                       request);
+
+    /*
+     * Display state after request processing.
+     */
+    printf("\n=========================================\n");
+    printf("          STATE AFTER REQUEST\n");
+    printf("=========================================\n");
+
+    display_system_state(&state);
+
+    /*
+     * Check final system safety.
+     */
+    printf("\nChecking final system safety...\n");
+
+    safety_result = check_safety(&state);
+
+    if (safety_result)
+    {
         printf("\nFINAL SYSTEM STATUS: SAFE\n");
 
-        display_safe_sequence(&state);
-
-    } else {
-
+        display_safe_sequence_result(&state);
+    }
+    else
+    {
         printf("\nFINAL SYSTEM STATUS: UNSAFE\n");
     }
 
-
+    /*
+     * Final request result.
+     */
     printf("\n=========================================\n");
-    printf("       DEADLOCKDOCTOR EXECUTION END\n");
-    printf("=========================================\n");
 
+    if (request_result)
+    {
+        printf("Resource request was successfully granted.\n");
+    }
+    else
+    {
+        printf("Resource request was not granted.\n");
+    }
+
+    printf("=========================================\n");
 
     return 0;
 }
